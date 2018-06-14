@@ -9,9 +9,20 @@ import org.knowm.xchange.exceptions.ExchangeException;
 import java.io.IOException;
 
 public class OkCoinStreamingService extends JsonNettyStreamingService {
+	public static final String PING = "{'event':'ping'}";
+	public static final String PONG = "pong";
 
     public OkCoinStreamingService(String apiUrl) {
         super(apiUrl);
+          
+        long delay  = 5000L;
+        long period = 5000L;
+        java.util.Timer timer = new java.util.Timer("PingTimer");
+        timer.scheduleAtFixedRate(new java.util.TimerTask() {
+            public void run() {
+            	sendMessage(PING);
+            }
+        }, delay, period);
     }
 
     @Override
@@ -21,7 +32,7 @@ public class OkCoinStreamingService extends JsonNettyStreamingService {
 
     @Override
     public String getSubscribeMessage(String channelName, Object... args) throws IOException {
-        WebSocketMessage webSocketMessage = new WebSocketMessage("addChannel", channelName);
+        WebSocketMessage webSocketMessage = new WebSocketMessage("addChannel", channelName, 0);
 
         ObjectMapper objectMapper = new ObjectMapper();
         return objectMapper.writeValueAsString(webSocketMessage);
@@ -29,7 +40,7 @@ public class OkCoinStreamingService extends JsonNettyStreamingService {
 
     @Override
     public String getUnsubscribeMessage(String channelName) throws IOException {
-        WebSocketMessage webSocketMessage = new WebSocketMessage("removeChannel", channelName);
+        WebSocketMessage webSocketMessage = new WebSocketMessage("removeChannel", channelName, 0);
 
         ObjectMapper objectMapper = new ObjectMapper();
         return objectMapper.writeValueAsString(webSocketMessage);
@@ -37,7 +48,11 @@ public class OkCoinStreamingService extends JsonNettyStreamingService {
 
     @Override
     protected void handleMessage(JsonNode message) {
-        if (message.get("data") != null) {
+    	JsonNode eventMessage = message.get("event");
+    	
+        if (eventMessage != null && PONG.equals(eventMessage.textValue())) {
+        	return;
+        } else if (message.get("data") != null) {
             if (message.get("data").has("result")) {
                 boolean success = message.get("data").get("result").asBoolean();
                 if (!success) {
