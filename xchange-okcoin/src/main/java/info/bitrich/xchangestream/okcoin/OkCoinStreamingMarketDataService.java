@@ -67,7 +67,7 @@ public class OkCoinStreamingMarketDataService implements StreamingMarketDataServ
                     channel = channel + "_" + args[1];
                 }
             } else {
-                channel = channel + "_" + args[1];
+                channel = channel + "_" + args[0];
             }
         }
 
