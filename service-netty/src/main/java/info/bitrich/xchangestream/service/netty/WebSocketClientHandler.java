@@ -1,14 +1,23 @@
 package info.bitrich.xchangestream.service.netty;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.zip.DataFormatException;
+import java.util.zip.GZIPInputStream;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.PongWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
@@ -77,6 +86,10 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
         if (frame instanceof TextWebSocketFrame) {
             TextWebSocketFrame textFrame = (TextWebSocketFrame)frame;
             handler.onMessage(textFrame.text());
+        } else if (frame instanceof BinaryWebSocketFrame) {
+        	BinaryWebSocketFrame binaryFrame=(BinaryWebSocketFrame)frame;
+        	String message = decodeByteBuff(binaryFrame.content());
+        	handler.onMessage(message);
         } else if (frame instanceof PongWebSocketFrame) {
             LOG.debug("WebSocket Client received pong");
         } else if (frame instanceof CloseWebSocketFrame) {
@@ -92,5 +105,24 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
             handshakeFuture.setFailure(cause);
         }
         ctx.close();
+    }
+    
+    private  String decodeByteBuff(ByteBuf buf) throws IOException, DataFormatException {
+    	ByteBufInputStream bis = new ByteBufInputStream(buf);
+		   
+ 	    GZIPInputStream gis = new GZIPInputStream(bis);
+ 	    BufferedReader br = new BufferedReader(new InputStreamReader(gis, "UTF-8"));
+			
+ 	    StringBuilder sb = new StringBuilder();
+ 	    String line;
+ 	    while((line = br.readLine()) != null) {	
+ 		    sb.append(line);
+ 	    }
+			
+ 	    br.close();
+ 	    gis.close();
+ 	    bis.close();
+         
+ 	    return sb.toString();
     }
 }
